@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Scraper</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
+            transition: all 0.3s ease;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-weight: 600;
+            font-size: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+            font-size: 1.1rem;
+        }
+
+        .dropdown {
+            position: relative;
+        }
+
+        .dropdown-trigger {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .dropdown-trigger:hover, .dropdown-trigger.active {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .dropdown-arrow {
+            transition: transform 0.3s ease;
+        }
+
+        .dropdown-trigger.active .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .dropdown-content {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #e1e5e9;
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .dropdown-content.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .dropdown-item.continent-header {
+            background-color: #667eea;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .dropdown-item.continent-header:hover {
+            background-color: #5a67d8;
+        }
+
+        .dropdown-item.country-item {
+            padding-left: 40px;
+            font-size: 0.95rem;
+        }
+
+        .dropdown-item.job-item {
+            font-size: 0.95rem;
+        }
+
+        .dropdown-item input[type="checkbox"] {
+            margin: 0;
+            transform: scale(1.2);
+        }
+
+        .selected-items {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .selected-tag {
+            background: #667eea;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .selected-tag .remove {
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.1rem;
+            opacity: 0.8;
+        }
+
+        .selected-tag .remove:hover {
+            opacity: 1;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 30px;
+        }
+
+        .submit-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 500;
+            display: none;
+        }
+
+        .status.loading {
+            background: #e3f2fd;
+            color: #1976d2;
+            display: block;
+        }
+
+        .status.success {
+            background: #e8f5e8;
+            color: #388e3c;
+            display: block;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #d32f2f;
+            display: block;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #1976d2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+                margin: 10px;
+            }
+
+            h1 {
+                font-size: 1.7rem;
+            }
+
+            .dropdown-content {
+                max-height: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+<h1>🔍 Job Scraper</h1>
+        <form id="jobScraperForm">
+            <div class="form-group">
+                <label for="countries">Countries</label>
+                <div class="dropdown" id="countriesDropdown">
+                    <div class="dropdown-trigger" onclick="toggleDropdown('countries')">
+                        <span id="countriesText">Select countries...</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div class="dropdown-content" id="countriesContent">
+                        <div class="dropdown-item" onclick="selectAll('countries')">
+                            <input type="checkbox" id="selectAllCountries"> Select All Countries
+                        </div>
+                        <div class="dropdown-item continent-header" onclick="toggleContinent('asia')">
+                            <input type="checkbox" id="selectAsia"> 🌏 Asia
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('China')">
+                            <input type="checkbox" value="China"> China
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Japan')">
+                            <input type="checkbox" value="Japan"> Japan
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('South Korea')">
+                            <input type="checkbox" value="South Korea"> South Korea
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('India')">
+                            <input type="checkbox" value="India"> India
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Turkey')">
+                            <input type="checkbox" value="Turkey"> Turkey (Asian part)
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('United Arab Emirates')">
+                            <input type="checkbox" value="United Arab Emirates"> United Arab Emirates
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Qatar')">
+                            <input type="checkbox" value="Qatar"> Qatar
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Saudi Arabia')">
+                            <input type="checkbox" value="Saudi Arabia"> Saudi Arabia
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Kuwait')">
+                            <input type="checkbox" value="Kuwait"> Kuwait
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Bahrain')">
+                            <input type="checkbox" value="Bahrain"> Bahrain
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Oman')">
+                            <input type="checkbox" value="Oman"> Oman
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Singapore')">
+                            <input type="checkbox" value="Singapore"> Singapore
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Malaysia')">
+                            <input type="checkbox" value="Malaysia"> Malaysia
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Thailand')">
+                            <input type="checkbox" value="Thailand"> Thailand
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Indonesia')">
+                            <input type="checkbox" value="Indonesia"> Indonesia
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Philippines')">
+                            <input type="checkbox" value="Philippines"> Philippines
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Vietnam')">
+                            <input type="checkbox" value="Vietnam"> Vietnam
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Kazakhstan')">
+                            <input type="checkbox" value="Kazakhstan"> Kazakhstan
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Azerbaijan')">
+                            <input type="checkbox" value="Azerbaijan"> Azerbaijan
+                        </div>
+                        
+                        <div class="dropdown-item continent-header" onclick="toggleContinent('europe')">
+                            <input type="checkbox" id="selectEurope"> 🌍 Europe
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Albania')">
+                            <input type="checkbox" value="Albania"> Albania
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Andorra')">
+                            <input type="checkbox" value="Andorra"> Andorra
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Austria')">
+                            <input type="checkbox" value="Austria"> Austria
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Belarus')">
+                            <input type="checkbox" value="Belarus"> Belarus
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Belgium')">
+                            <input type="checkbox" value="Belgium"> Belgium
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Bosnia and Herzegovina')">
+                            <input type="checkbox" value="Bosnia and Herzegovina"> Bosnia and Herzegovina
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Bulgaria')">
+                            <input type="checkbox" value="Bulgaria"> Bulgaria
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Croatia')">
+                            <input type="checkbox" value="Croatia"> Croatia
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Cyprus')">
+                            <input type="checkbox" value="Cyprus"> Cyprus (European side)
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Czechia')">
+                            <input type="checkbox" value="Czechia"> Czechia (Czech Republic)
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Denmark')">
+                            <input type="checkbox" value="Denmark"> Denmark
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Estonia')">
+                            <input type="checkbox" value="Estonia"> Estonia
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Finland')">
+                            <input type="checkbox" value="Finland"> Finland
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('France')">
+                            <input type="checkbox" value="France"> France
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Germany')">
+                            <input type="checkbox" value="Germany"> Germany
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Greece')">
+                            <input type="checkbox" value="Greece"> Greece
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Hungary')">
+                            <input type="checkbox" value="Hungary"> Hungary
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Iceland')">
+                            <input type="checkbox" value="Iceland"> Iceland
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Ireland')">
+                            <input type="checkbox" value="Ireland"> Ireland
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Italy')">
+                            <input type="checkbox" value="Italy"> Italy
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Kosovo')">
+                            <input type="checkbox" value="Kosovo"> Kosovo
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Latvia')">
+                            <input type="checkbox" value="Latvia"> Latvia
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Liechtenstein')">
+                            <input type="checkbox" value="Liechtenstein"> Liechtenstein
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Lithuania')">
+                            <input type="checkbox" value="Lithuania"> Lithuania
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Luxembourg')">
+                            <input type="checkbox" value="Luxembourg"> Luxembourg
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Malta')">
+                            <input type="checkbox" value="Malta"> Malta
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Moldova')">
+                            <input type="checkbox" value="Moldova"> Moldova
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Monaco')">
+                            <input type="checkbox" value="Monaco"> Monaco
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Montenegro')">
+                            <input type="checkbox" value="Montenegro"> Montenegro
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Netherlands')">
+                            <input type="checkbox" value="Netherlands"> Netherlands
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('North Macedonia')">
+                            <input type="checkbox" value="North Macedonia"> North Macedonia
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Norway')">
+                            <input type="checkbox" value="Norway"> Norway
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Poland')">
+                            <input type="checkbox" value="Poland"> Poland
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Portugal')">
+                            <input type="checkbox" value="Portugal"> Portugal
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Romania')">
+                            <input type="checkbox" value="Romania"> Romania
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Russia')">
+                            <input type="checkbox" value="Russia"> Russia (European part)
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('San Marino')">
+                            <input type="checkbox" value="San Marino"> San Marino
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Serbia')">
+                            <input type="checkbox" value="Serbia"> Serbia
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Slovakia')">
+                            <input type="checkbox" value="Slovakia"> Slovakia
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Slovenia')">
+                            <input type="checkbox" value="Slovenia"> Slovenia
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Spain')">
+                            <input type="checkbox" value="Spain"> Spain
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Sweden')">
+                            <input type="checkbox" value="Sweden"> Sweden
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Switzerland')">
+                            <input type="checkbox" value="Switzerland"> Switzerland
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Ukraine')">
+                            <input type="checkbox" value="Ukraine"> Ukraine
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('United Kingdom')">
+                            <input type="checkbox" value="United Kingdom"> United Kingdom
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Vatican')">
+                            <input type="checkbox" value="Vatican"> Vatican
+                        </div>
+
+                        <div class="dropdown-item continent-header" onclick="toggleContinent('northamerica')">
+                            <input type="checkbox" id="selectNorthamerica"> 🌎 North America
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('United States')">
+                            <input type="checkbox" value="United States"> United States
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Canada')">
+                            <input type="checkbox" value="Canada"> Canada
+                        </div>
+
+                        <div class="dropdown-item continent-header" onclick="toggleContinent('oceania')">
+                            <input type="checkbox" id="selectOceania"> 🌏 Australia / Oceania
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('Australia')">
+                            <input type="checkbox" value="Australia"> Australia
+                        </div>
+                        <div class="dropdown-item country-item" onclick="toggleCountry('New Zealand')">
+                            <input type="checkbox" value="New Zealand"> New Zealand
+                        </div>
+                    </div>
+                </div>
+                <div class="selected-items" id="selectedCountries"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="jobs">Job Titles</label>
+                <div class="dropdown" id="jobsDropdown">
+                    <div class="dropdown-trigger" onclick="toggleDropdown('jobs')">
+                        <span id="jobsText">Select job titles...</span>
+                        <span class="dropdown-arrow">▼</span>
+                    </div>
+                    <div class="dropdown-content" id="jobsContent">
+                        <div class="dropdown-item" onclick="selectAll('jobs')">
+                            <input type="checkbox" id="selectAllJobs"> Select All Jobs
+                        </div>
+                        <div class="dropdown-item job-item" onclick="toggleJob('PHP Developer')">
+                            <input type="checkbox" value="PHP Developer"> PHP Developer
+                        </div>
+                        <div class="dropdown-item job-item" onclick="toggleJob('WordPress Developer')">
+                            <input type="checkbox" value="WordPress Developer"> WordPress Developer
+                        </div>
+                        <div class="dropdown-item job-item" onclick="toggleJob('Django Developer')">
+                            <input type="checkbox" value="Django Developer"> Django Developer
+                        </div>
+                        <div class="dropdown-item job-item" onclick="toggleJob('Flutter Developer')">
+                            <input type="checkbox" value="Flutter Developer"> Flutter Developer
+                        </div>
+                    </div>
+                </div>
+                <div class="selected-items" id="selectedJobs"></div>
+            </div>
+
+            <button type="submit" class="submit-btn" id="submitBtn">
+                Start Job Scraping
+            </button>
+
+            <div class="status" id="status"></div>
+        </form>
+    </div>
+
+    <script>
+        let selectedCountries = [];
+        let selectedJobs = [];
+
+        const continents = {
+            asia: ['China', 'Japan', 'South Korea', 'India', 'Turkey', 'United Arab Emirates', 'Qatar', 'Saudi Arabia', 'Kuwait', 'Bahrain', 'Oman', 'Singapore', 'Malaysia', 'Thailand', 'Indonesia', 'Philippines', 'Vietnam', 'Kazakhstan', 'Azerbaijan'],
+            europe: ['Albania', 'Andorra', 'Austria', 'Belarus', 'Belgium', 'Bosnia and Herzegovina', 'Bulgaria', 'Croatia', 'Cyprus', 'Czechia', 'Denmark', 'Estonia', 'Finland', 'France', 'Germany', 'Greece', 'Hungary', 'Iceland', 'Ireland', 'Italy', 'Kosovo', 'Latvia', 'Liechtenstein', 'Lithuania', 'Luxembourg', 'Malta', 'Moldova', 'Monaco', 'Montenegro', 'Netherlands', 'North Macedonia', 'Norway', 'Poland', 'Portugal', 'Romania', 'Russia', 'San Marino', 'Serbia', 'Slovakia', 'Slovenia', 'Spain', 'Sweden', 'Switzerland', 'Ukraine', 'United Kingdom', 'Vatican'],
+            northamerica: ['United States', 'Canada'],
+            oceania: ['Australia', 'New Zealand']
+        };
+
+        const allCountries = [...continents.asia, ...continents.europe, ...continents.northamerica, ...continents.oceania];
+        const allJobs = ['PHP Developer', 'WordPress Developer', 'Django Developer', 'Flutter Developer'];
+
+        function toggleDropdown(type) {
+            const content = document.getElementById(type + 'Content');
+            const trigger = content.previousElementSibling;
+            
+            content.classList.toggle('show');
+            trigger.classList.toggle('active');
+            
+            // Close other dropdown
+            const otherType = type === 'countries' ? 'jobs' : 'countries';
+            const otherContent = document.getElementById(otherType + 'Content');
+            const otherTrigger = otherContent.previousElementSibling;
+            otherContent.classList.remove('show');
+            otherTrigger.classList.remove('active');
+        }
+
+        function selectAll(type) {
+            const checkbox = document.getElementById('selectAll' + (type === 'countries' ? 'Countries' : 'Jobs'));
+            const isChecked = checkbox.checked;
+            
+            if (type === 'countries') {
+                if (isChecked) {
+                    selectedCountries = [...allCountries];
+                    // Check all country checkboxes
+                    document.querySelectorAll('#countriesContent input[type="checkbox"]').forEach(cb => cb.checked = true);
+                } else {
+                    selectedCountries = [];
+                    // Uncheck all country checkboxes
+                    document.querySelectorAll('#countriesContent input[type="checkbox"]').forEach(cb => cb.checked = false);
+                }
+                updateSelectedDisplay('countries');
+            } else {
+                if (isChecked) {
+                    selectedJobs = [...allJobs];
+                    // Check all job checkboxes
+                    document.querySelectorAll('#jobsContent input[type="checkbox"]').forEach(cb => cb.checked = true);
+                } else {
+                    selectedJobs = [];
+                    // Uncheck all job checkboxes
+                    document.querySelectorAll('#jobsContent input[type="checkbox"]').forEach(cb => cb.checked = false);
+                }
+                updateSelectedDisplay('jobs');
+            }
+        }
+
+        function toggleContinent(continent) {
+            const checkbox = document.getElementById('select' + continent.charAt(0).toUpperCase() + continent.slice(1));
+            const isChecked = checkbox.checked;
+            const countries = continents[continent];
+            countries.forEach(country => {
+                const countryCheckbox = document.querySelector(`input[value="${country}"]`);
+                if (countryCheckbox) {
+                    countryCheckbox.checked = isChecked;
+                    if (isChecked) {
+                        if (!selectedCountries.includes(country)) {
+                            selectedCountries.push(country);
+                        }
+                    } else {
+                        selectedCountries = selectedCountries.filter(c => c !== country);
+                    }
+                }
+            });
+            
+            updateSelectedDisplay('countries');
+            updateSelectAllState('countries');
+        }
+
+        function toggleCountry(country) {
+            const checkbox = document.querySelector(`input[value="${country}"]`);
+            const isChecked = checkbox.checked;
+            
+            if (isChecked) {
+                if (!selectedCountries.includes(country)) {
+                    selectedCountries.push(country);
+                }
+            } else {
+                selectedCountries = selectedCountries.filter(c => c !== country);
+            }
+            
+            updateSelectedDisplay('countries');
+            updateSelectAllState('countries');
+            updateContinentStates();
+        }
+
+        function toggleJob(job) {
+            const checkbox = document.querySelector(`input[value="${job}"]`);
+            const isChecked = checkbox.checked;
+            
+            if (isChecked) {
+                if (!selectedJobs.includes(job)) {
+                    selectedJobs.push(job);
+                }
+            } else {
+                selectedJobs = selectedJobs.filter(j => j !== job);
+            }
+            
+            updateSelectedDisplay('jobs');
+            updateSelectAllState('jobs');
+        }
+
+        function updateSelectedDisplay(type) {
+            const container = document.getElementById('selected' + (type === 'countries' ? 'Countries' : 'Jobs'));
+            const selected = type === 'countries' ? selectedCountries : selectedJobs;
+            const text = document.getElementById(type + 'Text');
+            
+            container.innerHTML = '';
+            selected.forEach(item => {
+                const tag = document.createElement('div');
+                tag.className = 'selected-tag';
+                tag.innerHTML = `${item} <span class="remove" onclick="remove${type === 'countries' ? 'Country' : 'Job'}('${item}')">&times;</span>`;
+                container.appendChild(tag);
+            });
+            
+            if (selected.length === 0) {
+                text.textContent = `Select ${type}...`;
+            } else if (selected.length === 1) {
+                text.textContent = selected[0];
+            } else {
+                text.textContent = `${selected.length} ${type} selected`;
+            }
+        }
+
+        function removeCountry(country) {
+            selectedCountries = selectedCountries.filter(c => c !== country);
+            const checkbox = document.querySelector(`input[value="${country}"]`);
+            if (checkbox) checkbox.checked = false;
+            updateSelectedDisplay('countries');
+            updateSelectAllState('countries');
+            updateContinentStates();
+        }
+
+        function removeJob(job) {
+            selectedJobs = selectedJobs.filter(j => j !== job);
+            const checkbox = document.querySelector(`input[value="${job}"]`);
+            if (checkbox) checkbox.checked = false;
+            updateSelectedDisplay('jobs');
+            updateSelectAllState('jobs');
+        }
+
+        function updateSelectAllState(type) {
+            const selectAllCheckbox = document.getElementById('selectAll' + (type === 'countries' ? 'Countries' : 'Jobs'));
+            const selected = type === 'countries' ? selectedCountries : selectedJobs;
+            const all = type === 'countries' ? allCountries : allJobs;
+            
+            selectAllCheckbox.checked = selected.length === all.length;
+        }
+
+        function updateContinentStates() {
+            Object.keys(continents).forEach(continent => {
+                const checkbox = document.getElementById('select' + continent.charAt(0).toUpperCase() + continent.slice(1));
+                const countries = continents[continent];
+                const selectedInContinent = countries.filter(country => selectedCountries.includes(country));
+                
+                if (checkbox) {
+                    checkbox.checked = selectedInContinent.length === countries.length;
+                }
+            });
+        }
+
+        function showStatus(type, message) {
+            const status = document.getElementById('status');
+            status.className = `status ${type}`;
+            
+            if (type === 'loading') {
+                status.innerHTML = '<span class="spinner"></span>' + message;
+            } else {
+                status.textContent = message;
+            }
+            
+            if (type !== 'loading') {
+                setTimeout(() => {
+                    status.style.display = 'none';
+                    status.className = 'status';
+                }, 3000);
+            }
+        }
+
+        // Form submission
+        document.getElementById('jobScraperForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (selectedCountries.length === 0 || selectedJobs.length === 0) {
+                showStatus('error', 'Please select at least one country and one job title');
+                return;
+            }
+            
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            
+            showStatus('loading', 'Sending request to scrape jobs...');
+            
+            const requestData = {
+                countries: selectedCountries,
+                jobs: selectedJobs
+            };
+            
+            try {
+                const response = await fetch('http://localhost/scrapJobs', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                if (response.status === 200) {
+                    const data = await response.json();
+                    showStatus('success', 'Job scraping completed successfully!');
+                } else {
+                    const errorData = await response.text();
+                    showStatus('error', `Error: ${response.status} - ${errorData || 'Request failed'}`);
+                }
+            } catch (error) {
+                showStatus('error', `Network error: ${error.message}`);
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.dropdown')) {
+                document.querySelectorAll('.dropdown-content').forEach(content => {
+                    content.classList.remove('show');
+                });
+                document.querySelectorAll('.dropdown-trigger').forEach(trigger => {
+                    trigger.classList.remove('active');
+                });
+            }
+        });
+
+        // Prevent dropdown from closing when clicking inside
+        document.querySelectorAll('.dropdown-content').forEach(content => {
+            content.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+        });
+        </script>
+</body>
+</html>
